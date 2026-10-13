@@ -1,6 +1,6 @@
 [tools]
 python = "3.15.0"
-uv = "0.12.18"
+uv = "0.13.0"
 
 [tasks.install]
 run = "uv sync --locked"
