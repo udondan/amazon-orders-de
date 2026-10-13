@@ -1,10 +1,6 @@
-[build-system]
-requires = ["setuptools==80.9.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "amazon-orders-de"
-version = "0.1.0"
+version = "0.0.0"
 description = "An amazon-orders language package for amazon.de, which parses its pages in English"
 readme = "README.md"
 license = "MIT"
@@ -19,24 +15,54 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-[project.optional-dependencies]
+[project.urls]
+Source = "https://github.com/udondan/amazon-orders-de"
+
+[dependency-groups]
 dev = [
-    "flake8==7.4.1",
     "mypy==2.4.0",
     "pytest==9.1.1",
     "responses==0.26.3",
+    "ruff==0.16.8",
     "types-python-dateutil==2.9.0.20260807",
     "types-requests==2.33.0.20261006",
 ]
 
-[project.urls]
-Source = "https://github.com/udondan/amazon-orders-de"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.setuptools]
+[tool.hatch.build.targets.wheel]
 packages = ["amazon_orders_de"]
+
+# Constants.REQUEST_COOKIES isn't released yet, so develop and test against amazon-orders' develop branch until it is.
+# Only uv reads this, the published package requires amazon-orders by version. publish.yml refuses to publish while
+# it's here.
+[tool.uv.sources]
+amazon-orders = { git = "https://github.com/alexdlaird/amazon-orders", branch = "develop" }
+
+[tool.ruff]
+line-length = 119
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Overrides of amazon-orders' class attributes and properties, whose names and types it defines.
+"amazon_orders_de/constants.py" = ["N802", "RUF012"]
+"amazon_orders_de/selectors.py" = ["RUF012"]
 
 [tool.mypy]
-packages = ["amazon_orders_de"]
+python_version = "3.10"
+strict = true
+files = ["amazon_orders_de"]
+# amazon-orders ships no py.typed, so its classes, which this package subclasses, and their methods are Any.
+disallow_subclassing_any = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = ["amazonorders.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

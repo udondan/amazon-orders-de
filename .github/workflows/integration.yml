@@ -1,3 +1,4 @@
+---
 name: Integration Test
 
 on:
@@ -13,8 +14,8 @@ concurrency:
 
 jobs:
   test:
-    name: Integration Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       PYTHONUNBUFFERED: 1
       DEBUG: "True"
@@ -22,21 +23,22 @@ jobs:
       AMAZON_PASSWORD: ${{ secrets.AMAZON_PASSWORD }}
       AMAZON_OTP_SECRET_KEY: ${{ secrets.AMAZON_OTP_SECRET_KEY }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          python-version: "3.12"
+          persist-credentials: false
+
       - name: Verify credentials are set
         run: |
           if [ -z "$AMAZON_USERNAME" ] || [ -z "$AMAZON_PASSWORD" ]; then
             echo "::error::Set the AMAZON_USERNAME and AMAZON_PASSWORD repo secrets."
             exit 1
           fi
-      - name: Install
-        # REQUEST_COOKIES isn't released yet, so test against amazon-orders' develop branch until it is
-        run: |
-          pip install -e ".[dev]"
-          pip install "amazon-orders @ git+https://github.com/alexdlaird/amazon-orders@develop"
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      - name: Install dependencies
+        run: mise run install
+
+      # Debug output holds the raw pages of a real account, so it isn't uploaded as an artifact.
       - name: Integration test
-        run: pytest tests/integration
-      # Debug output holds the raw pages of a real account, so it isn't uploaded as an artifact
+        run: mise run integration-test

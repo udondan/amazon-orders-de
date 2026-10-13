@@ -52,13 +52,19 @@ Everything else works as described in the [amazon-orders docs](https://amazon-or
 
 ## Development
 
+With [mise](https://mise.jdx.dev/), which installs Python and uv:
+
 ```sh
-python -m venv venv
-venv/bin/pip install -e ".[dev]"
-venv/bin/flake8 amazon_orders_de tests scripts
-venv/bin/mypy
-venv/bin/pytest
+mise run install    # uv sync
+mise run lint       # ruff and mypy; `mise run lint-fix` fixes what it can
+mise run test
 ```
+
+Until amazon-orders releases `Constants.REQUEST_COOKIES`, uv installs it from its `develop` branch (see
+`[tool.uv.sources]` in `pyproject.toml`).
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/), from which release-please creates the
+releases and the changelog.
 
 The unit tests parse real amazon.de pages in `tests/resources`. Before a page is added there, it's anonymized with
 `scripts/anonymize-test-resources.py`, which removes personal and product details. The raw pages and the rules file
