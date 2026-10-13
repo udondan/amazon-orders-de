@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amazon-orders-de"
+version = "0.1.0"
+description = "An amazon-orders language package for amazon.de, which parses its pages in English"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Daniel Schroeder" }]
+requires-python = ">=3.10"
+dependencies = [
+    "amazon-orders>=4.8.0,<5",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8==7.4.1",
+    "mypy==2.4.0",
+    "pytest==9.1.1",
+    "responses==0.26.3",
+    "types-python-dateutil==2.9.0.20260807",
+    "types-requests==2.33.0.20261006",
+]
+
+[project.urls]
+Source = "https://github.com/udondan/amazon-orders-de"
+
+[tool.setuptools]
+packages = ["amazon_orders_de"]
+
+[tool.mypy]
+packages = ["amazon_orders_de"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]

@@ -1,0 +1,11 @@
+__pycache__/
+*.egg-info/
+build/
+dist/
+venv/
+.venv/
+.mypy_cache/
+.pytest_cache/
+# Raw pages captured from a real account, before they are anonymized
+tests/resources-raw/
+tests/.integration-output/
