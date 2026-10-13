@@ -18,9 +18,16 @@ different there:
 pip install amazon-orders-de
 ```
 
+amazon.de picks a page's language from a cookie, which needs `Constants.REQUEST_COOKIES` from amazon-orders' next
+release. Until then, install amazon-orders from its `develop` branch:
+
+```sh
+pip install amazon-orders-de "amazon-orders @ git+https://github.com/alexdlaird/amazon-orders@develop"
+```
+
 ## Usage
 
-Set `language_package` and `domain` in the `amazon-orders` config (`~/.config/amazon-orders/config.yml`):
+Set `language_package` and `domain` in the `amazon-orders` config (`~/.config/amazonorders/config.yml`):
 
 ```yaml
 language_package: amazon_orders_de
