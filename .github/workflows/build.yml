@@ -21,7 +21,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
-        run: pip install -e ".[dev]"
+        # REQUEST_COOKIES isn't released yet, so test against amazon-orders' develop branch until it is
+        run: |
+          pip install -e ".[dev]"
+          pip install "amazon-orders @ git+https://github.com/alexdlaird/amazon-orders@develop"
       - name: Lint
         run: flake8 amazon_orders_de tests scripts
       - name: Type check

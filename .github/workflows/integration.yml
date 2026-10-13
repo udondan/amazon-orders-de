@@ -33,7 +33,10 @@ jobs:
             exit 1
           fi
       - name: Install
-        run: pip install -e ".[dev]"
+        # REQUEST_COOKIES isn't released yet, so test against amazon-orders' develop branch until it is
+        run: |
+          pip install -e ".[dev]"
+          pip install "amazon-orders @ git+https://github.com/alexdlaird/amazon-orders@develop"
       - name: Integration test
         run: pytest tests/integration
       # Debug output holds the raw pages of a real account, so it isn't uploaded as an artifact
