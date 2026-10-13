@@ -80,6 +80,7 @@ class TestAmazonDe(unittest.TestCase):
         request = responses.calls[0].request
         self.assertTrue(request.headers["Accept-Language"].startswith("en-GB"))
         self.assertEqual("https://www.amazon.de", request.headers["Origin"])
+        self.assertIn("lc-acbde=en_GB", request.headers["Cookie"])
 
     def test_order_history(self):
         # WHEN
