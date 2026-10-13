@@ -1,5 +1,4 @@
 import re
-from typing import List, Optional
 
 from amazonorders import util
 from amazonorders.entity import order, recipient
@@ -10,11 +9,11 @@ class Recipient(recipient.Recipient):
     A Recipient whose address is rendered as an unclassed list, one or more lines per list item.
     """
 
-    def _parse_address(self) -> Optional[str]:
+    def _parse_address(self) -> str | None:
         return self._parse_address_lines() or super()._parse_address()
 
-    def _parse_address_lines(self) -> Optional[str]:
-        lines: List[str] = []
+    def _parse_address_lines(self) -> str | None:
+        lines: list[str] = []
         for tag in util.select(self.parsed, self.config.selectors.FIELD_RECIPIENT_ADDRESS_LINES_SELECTOR):
             # A list item may hold several lines separated by <br> or, when Amazon renders the address inline,
             # by commas
@@ -28,7 +27,7 @@ class Order(order.Order):
     An Order on amazon.de.
     """
 
-    def _parse_payment_method(self) -> Optional[str]:
+    def _parse_payment_method(self) -> str | None:
         # When a Gift Card was used alongside a card, prefer the card (the instrument with a number), like its last
         # digits are
         selectors = self.config.selectors
@@ -39,7 +38,7 @@ class Order(order.Order):
 
         return super()._parse_payment_method()
 
-    def _parse_recipient(self) -> Optional[recipient.Recipient]:
+    def _parse_recipient(self) -> recipient.Recipient | None:
         value = super()._parse_recipient()
         if value is None:
             return None

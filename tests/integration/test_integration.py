@@ -9,8 +9,10 @@ from amazonorders.transactions import AmazonTransactions
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), os.pardir, ".integration-output")
 
 
-@unittest.skipUnless(os.environ.get("AMAZON_USERNAME") and os.environ.get("AMAZON_PASSWORD"),
-                     "AMAZON_USERNAME and AMAZON_PASSWORD must be set to run the integration tests.")
+@unittest.skipUnless(
+    os.environ.get("AMAZON_USERNAME") and os.environ.get("AMAZON_PASSWORD"),
+    "AMAZON_USERNAME and AMAZON_PASSWORD must be set to run the integration tests.",
+)
 class TestIntegration(unittest.TestCase):
     """
     Log in to amazon.de and parse the live Order history and Transactions with the language package. Credentials are
@@ -22,12 +24,14 @@ class TestIntegration(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        config = AmazonOrdersConfig(data={
-            "language_package": "amazon_orders_de",
-            "domain": "amazon.de",
-            "output_dir": OUTPUT_DIR,
-            "cookie_jar_path": os.path.join(OUTPUT_DIR, "cookies.json"),
-        })
+        config = AmazonOrdersConfig(
+            data={
+                "language_package": "amazon_orders_de",
+                "domain": "amazon.de",
+                "output_dir": OUTPUT_DIR,
+                "cookie_jar_path": os.path.join(OUTPUT_DIR, "cookies.json"),
+            }
+        )
         cls.amazon_session = AmazonSession(config=config, debug=os.environ.get("DEBUG") == "True")
         cls.amazon_session.login()
 

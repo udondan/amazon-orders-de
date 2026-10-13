@@ -8,10 +8,9 @@ import json
 import os
 import re
 import sys
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from html import escape as html_escape
-from typing import Dict, List, Set, Tuple, Union
-from urllib.parse import quote, parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from bs4 import BeautifulSoup, Comment, Tag
 
@@ -68,34 +67,90 @@ PUBLIC_TEXTS = {"", "Prime Video"}
 
 # Product links outside of orders are ads, e.g. for the Amazon Visa card, and must keep their text
 ORDER_ITEM_CONTAINERS = ["div.order-card", "[data-component='purchasedItems']"]
-PRODUCT_TITLE_SELECTORS = ["[data-component='itemTitle']", ".yohtmlc-product-title",
-                           # Services reference the product they belong to, e.g. "Service für: <title>"
-                           "[data-component='associatedOrdersForService'] span.a-size-small > span"] + [
-    f"{container} {link}" for container in ORDER_ITEM_CONTAINERS
-    for link in ("a[href*='/dp/']", "a[href*='/gp/product/']", "a[href*='/gp/video/detail/']")]
-PRODUCT_IMAGE_CONTAINER_SELECTORS = ["[data-component='itemImage']", ".product-image"] + ORDER_ITEM_CONTAINERS
-PRODUCT_DETAIL_SELECTORS = ["[data-component='purchasedVariationDetails']", "[data-component='customizedItemDetails']",
-                            "[data-component='substitutionDetails']", "[data-component='giftMessage']"]
-ASIN_REGEX = re.compile(r"(?:/dp/|/gp/product/|/gp/video/detail/|amzn1\.asin\.|asins?[\"'=:%3Dd]+\s*\"?)"
-                        r"([A-Z0-9]{10})\b")
+PRODUCT_TITLE_SELECTORS = [
+    "[data-component='itemTitle']",
+    ".yohtmlc-product-title",
+    # Services reference the product they belong to, e.g. "Service für: <title>"
+    "[data-component='associatedOrdersForService'] span.a-size-small > span",
+] + [
+    f"{container} {link}"
+    for container in ORDER_ITEM_CONTAINERS
+    for link in ("a[href*='/dp/']", "a[href*='/gp/product/']", "a[href*='/gp/video/detail/']")
+]
+PRODUCT_IMAGE_CONTAINER_SELECTORS = ["[data-component='itemImage']", ".product-image", *ORDER_ITEM_CONTAINERS]
+PRODUCT_DETAIL_SELECTORS = [
+    "[data-component='purchasedVariationDetails']",
+    "[data-component='customizedItemDetails']",
+    "[data-component='substitutionDetails']",
+    "[data-component='giftMessage']",
+]
+ASIN_REGEX = re.compile(
+    r"(?:/dp/|/gp/product/|/gp/video/detail/|amzn1\.asin\.|asins?[\"'=:%3Dd]+\s*\"?)"
+    r"([A-Z0-9]{10})\b"
+)
 ASIN_LIST_REGEX = re.compile(r"asins=([A-Z0-9]{10}(?:(?:%2C|,)[A-Z0-9]{10})*)")
 SELLER_NAME_REGEX = re.compile(r"(?:Verkauf durch|Verkauft von|Sold by)\s*:?\s*(?:<[^>]+>\s*)*([^<\n]+?)\s*<")
-SELLER_ID_REGEX = re.compile(r"(?:seller(?:ID|Id|id)?|recipientId|merchantId|merchant)(?:[\"'=:]|%3D|%22)+"
-                             r"([A-Z0-9]{10,16})\b")
+SELLER_ID_REGEX = re.compile(
+    r"(?:seller(?:ID|Id|id)?|recipientId|merchantId|merchant)(?:[\"'=:]|%3D|%22)+"
+    r"([A-Z0-9]{10,16})\b"
+)
 PRODUCT_IMAGE_REGEX = re.compile(r"(images/I/)[A-Za-z0-9+%-]+")
 VIDEO_ID_REGEX = re.compile(r"amzn1\.dv\.gti\.[0-9a-f-]{36}")
 STATEMENT_DESCRIPTOR_REGEX = re.compile(r'"statementDescriptor"\s*:\s*"([^"]*)"')
-GERMAN_MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober",
-                 "November", "Dezember"]
-GERMAN_DATE_REGEX = re.compile(r"\b(\d{1,2})\.(\s|\xa0|&nbsp;)(" + "|".join(GERMAN_MONTHS) + r")\b"
-                               r"(?:(\s|\xa0|&nbsp;)(\d{4})\b)?")
-ENGLISH_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-                  "November", "December"]
+GERMAN_MONTHS = [
+    "Januar",
+    "Februar",
+    "März",
+    "April",
+    "Mai",
+    "Juni",
+    "Juli",
+    "August",
+    "September",
+    "Oktober",
+    "November",
+    "Dezember",
+]
+GERMAN_DATE_REGEX = re.compile(
+    r"\b(\d{1,2})\.(\s|\xa0|&nbsp;)(" + "|".join(GERMAN_MONTHS) + r")\b"
+    r"(?:(\s|\xa0|&nbsp;)(\d{4})\b)?"
+)
+ENGLISH_MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+]
 # Abbreviations as rendered by Amazon, e.g. "03 Sept 2026" in transactions
-ENGLISH_MONTH_ABBREVIATIONS = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "Jun": 6, "Jul": 7, "Aug": 8, "Sept": 9,
-                               "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
-ENGLISH_DATE_REGEX = re.compile(r"\b(\d{1,2})(\s|\xa0|&nbsp;)(" + "|".join(ENGLISH_MONTHS) + "|"
-                                + "|".join(ENGLISH_MONTH_ABBREVIATIONS) + r")\b(?:(\s|\xa0|&nbsp;)(\d{4})\b)?")
+ENGLISH_MONTH_ABBREVIATIONS = {
+    "Jan": 1,
+    "Feb": 2,
+    "Mar": 3,
+    "Apr": 4,
+    "Jun": 6,
+    "Jul": 7,
+    "Aug": 8,
+    "Sept": 9,
+    "Sep": 9,
+    "Oct": 10,
+    "Nov": 11,
+    "Dec": 12,
+}
+ENGLISH_DATE_REGEX = re.compile(
+    r"\b(\d{1,2})(\s|\xa0|&nbsp;)("
+    + "|".join(ENGLISH_MONTHS)
+    + "|"
+    + "|".join(ENGLISH_MONTH_ABBREVIATIONS)
+    + r")\b(?:(\s|\xa0|&nbsp;)(\d{4})\b)?"
+)
 GERMAN_AMOUNT_REGEX = re.compile(r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})(\s|\xa0|&nbsp;)?€")
 US_EURO_AMOUNT_REGEX = re.compile(r"€(\d{1,3}(?:,\d{3})+|\d+)\.(\d{2})(?![\d])")
 ORDER_ID_REGEX = re.compile(r"\b(\d{3}|D\d{2})-(\d{7})-(\d{7})\b")
@@ -105,18 +160,38 @@ CARD_DIGITS_REGEXES = [
     re.compile(r"(\"lastDigits\"\s*:\s*\")(\d{2,4})(\")"),
     re.compile(r"((?:endet auf|ending in)\s+)(\d{2,4})\b", re.IGNORECASE),
 ]
-CUSTOMER_ID_REGEXES = [re.compile(r"(\"customerId\"\s*:\s*\")([A-Z0-9]{10,20})(\")"),
-                       re.compile(r"(data-raw-id=\")([A-Z0-9]{10,20})(\")")]
+CUSTOMER_ID_REGEXES = [
+    re.compile(r"(\"customerId\"\s*:\s*\")([A-Z0-9]{10,20})(\")"),
+    re.compile(r"(data-raw-id=\")([A-Z0-9]{10,20})(\")"),
+]
 PHONE_REGEX = re.compile(r"((?:Telefon(?:nummer)?|Phone)\s*:?\s*)(\+?[\d][\d\s/()-]{5,}\d)", re.IGNORECASE)
 KEEP_SCRIPT_ID_PREFIXES = ("shipToData", "__NEXT_DATA__")
-REMOVE_SELECTORS = ["header", "footer", "#navbar", "#navbar-main", "#nav-belt", "#nav-main", "#navFooter",
-                    "#nav-flyout-anchor", "#nav-flyout-ewc", "#rhf", "#skiplink", "iframe", "noscript", "style",
-                    "link", "meta:not([charset])",
-                    # Ads are targeted at the customer's past activity
-                    "[cel_widget_id^='adplacements']", "[id^='ape_']"]
-REDACT_QUERY_KEYS = re.compile(r"(ship|package|track|itemid|lineitem|token|session|csrf|arb|customer|address|sig|"
-                               r"encrypted|encoded|pd_rd|pf_rd|qid|sr|crid|cid|ref_?id|contractid|ats|requestid)",
-                               re.IGNORECASE)
+REMOVE_SELECTORS = [
+    "header",
+    "footer",
+    "#navbar",
+    "#navbar-main",
+    "#nav-belt",
+    "#nav-main",
+    "#navFooter",
+    "#nav-flyout-anchor",
+    "#nav-flyout-ewc",
+    "#rhf",
+    "#skiplink",
+    "iframe",
+    "noscript",
+    "style",
+    "link",
+    "meta:not([charset])",
+    # Ads are targeted at the customer's past activity
+    "[cel_widget_id^='adplacements']",
+    "[id^='ape_']",
+]
+REDACT_QUERY_KEYS = re.compile(
+    r"(ship|package|track|itemid|lineitem|token|session|csrf|arb|customer|address|sig|"
+    r"encrypted|encoded|pd_rd|pf_rd|qid|sr|crid|cid|ref_?id|contractid|ats|requestid)",
+    re.IGNORECASE,
+)
 TOKEN_VALUE_REGEX = re.compile(r"^[A-Za-z0-9+/=_%.-]{40,}$")
 # Parsers select on these, and their values are hashes, not personal data
 KEEP_ATTRIBUTES = ("id", "class", "name", "for")
@@ -125,22 +200,33 @@ PAYMENT_METHOD_NAME_REGEX = re.compile(r'"(?:paymentMethodName|paymentMethodHead
 # Request IDs outside of URL attributes, e.g. inside popover JSON or in tracking pixel paths
 REQUEST_ID_REGEX = re.compile(r"(relatedRequestId=|uedata%3Fstaticb%26id%3D)([A-Z0-9]{12,})")
 # Carrier free text may name a neighbour or drop-off location, e.g. "von einem Nachbarn <Name> in Hausnummer ..."
-CARRIER_FREE_TEXT_REGEX = re.compile(r"Hausnummer|Abgabeort|Nachbarn? [A-ZÄÖÜ]|neighbou?r [A-Z]|house number|"
-                                     r"drop-off location|safe place", re.IGNORECASE)
+CARRIER_FREE_TEXT_REGEX = re.compile(
+    r"Hausnummer|Abgabeort|Nachbarn? [A-ZÄÖÜ]|neighbou?r [A-Z]|house number|"
+    r"drop-off location|safe place",
+    re.IGNORECASE,
+)
 FAKE_CARRIER_TEXT = "The parcel was handed to a neighbour"
-JSON_TOKEN_REGEX = re.compile(r'"(\w*[Tt]oken|lastEvaluated\w*Key|exclusiveStartKey|sessionId|requestId|csrf\w*|'
-                              r'applicationInstanceTraceId)"'
-                              r'(\s*:\s*)"([^"]{12,})"')
+JSON_TOKEN_REGEX = re.compile(
+    r'"(\w*[Tt]oken|lastEvaluated\w*Key|exclusiveStartKey|sessionId|requestId|csrf\w*|'
+    r'applicationInstanceTraceId)"'
+    r'(\s*:\s*)"([^"]{12,})"'
+)
 EXPIRATION_REGEX = re.compile(r'"(\w*[Ee]xpiration\w*)"\s*:\s*\{\s*"year"\s*:\s*\d+\s*,\s*"month"\s*:\s*\d+\s*\}')
 JWT_REGEX = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")
 # Tracking pixels carry the session and request ID in their path, e.g. "/OP/<marketplace>:<session>:<request>$"
 TRACKING_PIXEL_REGEX = re.compile(r"(/OP/[A-Z0-9]+:)([^$\"'\s]+)(?=\$)")
-ADDRESS_SELECTORS = ["li.displayAddressFullName", "li.displayAddressAddressLine1", "li.displayAddressAddressLine2",
-                     "li.displayAddressCityStateOrRegionPostalCode", "li.displayAddressPhoneNumber",
-                     "[data-component='shippingAddress'] li", "div.displayAddressDiv li"]
+ADDRESS_SELECTORS = [
+    "li.displayAddressFullName",
+    "li.displayAddressAddressLine1",
+    "li.displayAddressAddressLine2",
+    "li.displayAddressCityStateOrRegionPostalCode",
+    "li.displayAddressPhoneNumber",
+    "[data-component='shippingAddress'] li",
+    "div.displayAddressDiv li",
+]
 
 
-def _neutralize(value: str, titles: List[Tuple[str, str]], sellers: List[str]) -> str:
+def _neutralize(value: str, titles: list[tuple[str, str]], sellers: list[str]) -> str:
     collapsed = re.sub(r"\s+", " ", value)
     changed = False
     for title, fake in titles:
@@ -152,7 +238,7 @@ def _neutralize(value: str, titles: List[Tuple[str, str]], sellers: List[str]) -
     return collapsed if changed else value
 
 
-def _address_fragments(soup: BeautifulSoup) -> List[BeautifulSoup]:
+def _address_fragments(soup: BeautifulSoup) -> list[BeautifulSoup]:
     fragments = [soup]
     for tag in soup.select("script[id^='shipToData']"):
         fragments.append(BeautifulSoup(tag.string or "", "html.parser"))
@@ -193,19 +279,19 @@ def _fake_address_line(tag: Tag, value: str) -> str:
 
 
 class Anonymizer:
-    def __init__(self, rules: Dict) -> None:
+    def __init__(self, rules: dict) -> None:
         self.salt = str(rules.get("id_salt") or "amazon-orders").encode("utf-8")
-        self.replace: List[Dict[str, str]] = list(rules.get("replace", []))
-        self.sensitive: Set[str] = set(rules.get("sensitive", []))
-        self.order_ids: Dict[str, str] = {}
-        self.customer_ids: Set[str] = set()
-        self.card_digits: Set[str] = set()
+        self.replace: list[dict[str, str]] = list(rules.get("replace", []))
+        self.sensitive: set[str] = set(rules.get("sensitive", []))
+        self.order_ids: dict[str, str] = {}
+        self.customer_ids: set[str] = set()
+        self.card_digits: set[str] = set()
         self.date_shift = datetime.timedelta(days=int(rules.get("date_shift_days", 0)))
         self.amount_factor = Decimal(str(rules.get("amount_factor", 1)))
-        self.titles: Dict[str, str] = {}
-        self.asins: Dict[str, str] = {}
-        self.sellers: List[str] = []
-        self.seller_ids: Dict[str, str] = {}
+        self.titles: dict[str, str] = {}
+        self.asins: dict[str, str] = {}
+        self.sellers: list[str] = []
+        self.seller_ids: dict[str, str] = {}
 
     def collect_identifiers(self, html: str) -> None:
         """Harvest customer IDs and card digits so they can be replaced wherever they appear, not only in context."""
@@ -302,13 +388,13 @@ class Anonymizer:
                     value = re.sub(r"\s+", " ", tag.get_text(" ")).strip()
                     self._add_address(value, _fake_address_line(tag, value), known)
 
-    def _add_address(self, value: str, fake: str, known: Set[str]) -> None:
+    def _add_address(self, value: str, fake: str, known: set[str]) -> None:
         if len(value) >= 3 and value not in known and value.lower() not in ("deutschland", "germany"):
             self.replace.append({"find": value, "replace": fake})
             self.sensitive.add(value)
             known.add(value)
 
-    def _collect_popover_addresses(self, fragment: BeautifulSoup, known: Set[str]) -> None:
+    def _collect_popover_addresses(self, fragment: BeautifulSoup, known: set[str]) -> None:
         # Order history cards: name in <h5>, then "street<br>city postal code", then the country
         for popover in fragment.select("[id^='a-popover-shippingAddress']"):
             for row in popover.select(".a-row"):
@@ -319,7 +405,7 @@ class Anonymizer:
                     else:
                         self._add_address(line, _fake_address_part(line), known)
 
-    def _collect_inline_addresses(self, fragment: BeautifulSoup, known: Set[str]) -> None:
+    def _collect_inline_addresses(self, fragment: BeautifulSoup, known: set[str]) -> None:
         # Some detail pages list the address inline: name, then ", street , postal code", then the country
         for address in fragment.select("[data-component='shippingAddress'] ul"):
             lines = address.find_all("li")
@@ -331,12 +417,13 @@ class Anonymizer:
                     part = re.sub(r"\s+", " ", part)
                     self._add_address(part, _fake_address_part(part), known)
 
-    def _add_inline_address_line(self, value: str, known: Set[str]) -> None:
+    def _add_inline_address_line(self, value: str, known: set[str]) -> None:
         parts = [p.strip() for p in value.split(",") if p.strip()]
         if len(parts) > 1:
             self.sensitive.update(parts)
-            fake_parts = [FAKE_ADDRESS_LINES[2].split()[0] if re.fullmatch(r"\d{5}", p)
-                          else _fake_address_part(p) for p in parts]
+            fake_parts = [
+                FAKE_ADDRESS_LINES[2].split()[0] if re.fullmatch(r"\d{5}", p) else _fake_address_part(p) for p in parts
+            ]
             self._add_address(value, (", " if value.startswith(",") else "") + " , ".join(fake_parts), known)
 
     def clean_structure(self, soup: BeautifulSoup) -> None:
@@ -369,8 +456,9 @@ class Anonymizer:
                 continue
             if attr in ("href", "src", "action", "data-url", "data-href") and "?" in value:
                 tag[attr] = self.clean_url(value)
-            elif attr not in KEEP_ATTRIBUTES and TOKEN_VALUE_REGEX.match(value) and \
-                    not value.startswith(("http", "/")):
+            elif (
+                attr not in KEEP_ATTRIBUTES and TOKEN_VALUE_REGEX.match(value) and not value.startswith(("http", "/"))
+            ):
                 self.sensitive.add(value)
                 tag[attr] = "REDACTED"
 
@@ -420,8 +508,7 @@ class Anonymizer:
             grouped = f"{int(whole_new):,}".replace(",", thousands)
             return grouped + ("," if thousands == "." else ".") + cents_new
 
-        html = GERMAN_AMOUNT_REGEX.sub(
-            lambda m: scale(m.group(1), m.group(2), ".") + (m.group(3) or "") + "€", html)
+        html = GERMAN_AMOUNT_REGEX.sub(lambda m: scale(m.group(1), m.group(2), ".") + (m.group(3) or "") + "€", html)
         return US_EURO_AMOUNT_REGEX.sub(lambda m: "€" + scale(m.group(1), m.group(2), ","), html)
 
     def clean_url(self, url: str) -> str:
@@ -460,8 +547,12 @@ class Anonymizer:
     def _replace_products(self, html: str) -> str:
         for title, fake in sorted(self.titles.items(), key=lambda t: len(t[0]), reverse=True):
             # Titles may also be embedded in JSON (escaped) or in text nodes BeautifulSoup kept escaped
-            for variant in {json.dumps(title)[1:-1], json.dumps(title, ensure_ascii=False)[1:-1],
-                            html_escape(title, quote=False), html_escape(title)}:
+            for variant in {
+                json.dumps(title)[1:-1],
+                json.dumps(title, ensure_ascii=False)[1:-1],
+                html_escape(title, quote=False),
+                html_escape(title),
+            }:
                 html = html.replace(variant, fake)
         for identifier, fake in list(self.asins.items()) + list(self.seller_ids.items()):
             # IDs may directly follow a URL-encoded comma ("%2C"), so a plain word boundary is not enough
@@ -506,13 +597,14 @@ class Anonymizer:
             self.sensitive.add(value)
         return match.group(0).replace(value, fake, 1) if value != fake else match.group(0)
 
-    def leftovers(self, html: str) -> List[str]:
+    def leftovers(self, html: str) -> list[str]:
         found = []
         for value in self.sensitive:
             # Short values like card digits are only checked in context, a bare "1234" may be a price
             if len(value) <= 4:
-                if re.search(r"(•|\*|endet auf|ending in|lastDigits\"\s*:\s*\")\s*" + re.escape(value), html) or \
-                        re.search(r">\s*" + re.escape(value) + r"\s*<", html):
+                if re.search(
+                    r"(•|\*|endet auf|ending in|lastDigits\"\s*:\s*\")\s*" + re.escape(value), html
+                ) or re.search(r">\s*" + re.escape(value) + r"\s*<", html):
                     found.append(value)
             elif value.lower() in html.lower():
                 found.append(value)
@@ -523,24 +615,29 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Anonymize raw Amazon pages for use as test resources.")
     parser.add_argument("--rules", required=True, help="Private JSON rules file (never commit it).")
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--extra-sensitive-file", action="append", default=[],
-                        help="JSON file whose values must not survive (e.g. the cookie jar).")
+    parser.add_argument(
+        "--extra-sensitive-file",
+        action="append",
+        default=[],
+        help="JSON file whose values must not survive (e.g. the cookie jar).",
+    )
     parser.add_argument("pages", nargs="+", help="raw_path:output_relative_path[:cards=0,3,5]")
     return parser.parse_args()
 
 
-def load_anonymizer(rules_path: str, extra_sensitive_paths: List[str]) -> Anonymizer:
+def load_anonymizer(rules_path: str, extra_sensitive_paths: list[str]) -> Anonymizer:
     with open(os.path.expanduser(rules_path), encoding="utf-8") as f:
         anonymizer = Anonymizer(json.load(f))
     for path in extra_sensitive_paths:
         with open(os.path.expanduser(path), encoding="utf-8") as f:
             data = json.load(f)
-        anonymizer.sensitive.update(v for v in (data.values() if isinstance(data, dict) else data)
-                                    if isinstance(v, str) and len(v) >= 12)
+        anonymizer.sensitive.update(
+            v for v in (data.values() if isinstance(data, dict) else data) if isinstance(v, str) and len(v) >= 12
+        )
     return anonymizer
 
 
-def read_page(anonymizer: Anonymizer, raw_path: str) -> Union[BeautifulSoup, str]:
+def read_page(anonymizer: Anonymizer, raw_path: str) -> BeautifulSoup | str:
     with open(os.path.expanduser(raw_path), encoding="utf-8") as f:
         raw = f.read()
     anonymizer.collect_identifiers(raw)
@@ -553,18 +650,18 @@ def read_page(anonymizer: Anonymizer, raw_path: str) -> Union[BeautifulSoup, str
     return soup
 
 
-def keep_cards(soup: Union[BeautifulSoup, str], options: List[str]) -> None:
+def keep_cards(soup: BeautifulSoup | str, options: list[str]) -> None:
     for option in options:
         if isinstance(soup, str):
             continue
         if option.startswith("cards="):
-            keep = {int(i) for i in option[len("cards="):].split(",")}
+            keep = {int(i) for i in option[len("cards=") :].split(",")}
             for index, card in enumerate(soup.select("div.order-card")):
                 if index not in keep:
                     card.decompose()
 
 
-def write_page(anonymizer: Anonymizer, soup: Union[BeautifulSoup, str], output_dir: str, out_rel: str) -> str:
+def write_page(anonymizer: Anonymizer, soup: BeautifulSoup | str, output_dir: str, out_rel: str) -> str:
     if isinstance(soup, str):
         html = anonymizer.clean_text(soup)
     else:
@@ -590,8 +687,9 @@ def check_page(anonymizer: Anonymizer, out_path: str) -> bool:
     for value in leftovers:
         # Show only a masked hint and the surrounding markup, never the value itself
         index = html.lower().find(value.lower())
-        context = html[max(0, index - 80):index + len(value) + 40] if index >= 0 else ""
-        print(f"     {value[:2]}…({len(value)} chars): {re.sub(r'\s+', ' ', context.replace(value, '<X>'))}")
+        context = html[max(0, index - 80) : index + len(value) + 40] if index >= 0 else ""
+        masked = re.sub(r"\s+", " ", context.replace(value, "<X>"))
+        print(f"     {value[:2]}…({len(value)} chars): {masked}")
     return False
 
 
@@ -603,14 +701,16 @@ def main() -> None:
     soups = [read_page(anonymizer, raw_path) for raw_path, *_ in pairs]
 
     written = []
-    for (_, out_rel, *options), soup in zip(pairs, soups):
+    for (_, out_rel, *options), soup in zip(pairs, soups, strict=True):
         keep_cards(soup, options)
         written.append(write_page(anonymizer, soup, args.output_dir, out_rel))
 
     # Check every page, so all leaks are reported at once
     results = [check_page(anonymizer, out_path) for out_path in written]
-    print(f"{len(anonymizer.order_ids)} order numbers replaced, {len(anonymizer.replace)} text rules applied, "
-          f"{len(anonymizer.sensitive)} sensitive values checked.")
+    print(
+        f"{len(anonymizer.order_ids)} order numbers replaced, {len(anonymizer.replace)} text rules applied, "
+        f"{len(anonymizer.sensitive)} sensitive values checked."
+    )
     if not all(results):
         sys.exit(1)
 

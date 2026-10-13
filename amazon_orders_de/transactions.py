@@ -1,21 +1,20 @@
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
-
-from bs4 import Tag
+from typing import Any
 
 from amazonorders import transactions, util
 from amazonorders.entity.transaction import Transaction
 from amazonorders.exception import AmazonOrdersEntityError, AmazonOrdersError
 from amazonorders.session import AmazonSession
+from bs4 import Tag
 
 logger = logging.getLogger(__name__)
 
 #: An Order number within a Transaction's Order description.
 _ORDER_NUMBER_RE = re.compile(r"\b(\d{3}-\d{7}-\d{7}|D\d{2}-\d{7}-\d{7})\b")
 
-_PageResult = Tuple[List[Transaction], Optional[Dict[str, Any]]]
+_PageResult = tuple[list[Transaction], dict[str, Any] | None]
 
 
 class TransactionsPage(transactions.TransactionsPage):
@@ -24,28 +23,29 @@ class TransactionsPage(transactions.TransactionsPage):
     further pages from an internal API.
     """
 
-    def get_page(self,
-                 amazon_session: AmazonSession,
-                 url: str,
-                 next_page_data: Optional[Dict[str, Any]] = None) -> _PageResult:
+    def get_page(
+        self, amazon_session: AmazonSession, url: str, next_page_data: dict[str, Any] | None = None
+    ) -> _PageResult:
         if not next_page_data or "request" not in next_page_data:
             return super().get_page(amazon_session, url, next_page_data)
 
-        page_response = amazon_session.post(self.config.constants.TRANSACTION_HISTORY_API_URL,
-                                            json=next_page_data["request"],
-                                            headers={"x-amzn-upx-token": next_page_data["token"]})
+        page_response = amazon_session.post(
+            self.config.constants.TRANSACTION_HISTORY_API_URL,
+            json=next_page_data["request"],
+            headers={"x-amzn-upx-token": next_page_data["token"]},
+        )
         amazon_session.check_response(page_response, meta=next_page_data)
 
         try:
             data = page_response.response.json()
-        except ValueError:
-            raise AmazonOrdersError("Could not parse Transaction history. Check if Amazon changed the API.",
-                                    meta=next_page_data)
+        except ValueError as e:
+            raise AmazonOrdersError(
+                "Could not parse Transaction history. Check if Amazon changed the API.", meta=next_page_data
+            ) from e
 
         return self._parse_api_response(data, next_page_data)
 
-    def parse_page(self,
-                   parsed: Tag) -> _PageResult:
+    def parse_page(self, parsed: Tag) -> _PageResult:
         next_data_tag = util.select_one(parsed, self.config.selectors.TRANSACTION_HISTORY_NEXT_DATA_SELECTOR)
         if next_data_tag:
             result = self._parse_next_data(next_data_tag)
@@ -54,8 +54,7 @@ class TransactionsPage(transactions.TransactionsPage):
 
         return super().parse_page(parsed)
 
-    def _parse_next_data(self,
-                         next_data_tag: Tag) -> Optional[_PageResult]:
+    def _parse_next_data(self, next_data_tag: Tag) -> _PageResult | None:
         try:
             page_props = json.loads(next_data_tag.text)["props"]["pageProps"]
             state = page_props["state"]["transactionResponseState"]
@@ -81,20 +80,21 @@ class TransactionsPage(transactions.TransactionsPage):
                     },
                 }
             except (KeyError, TypeError):
-                logger.warning("Only the first page of Transactions could be loaded, as the data to load further "
-                               "pages was not found.")
+                logger.warning(
+                    "Only the first page of Transactions could be loaded, as the data to load further "
+                    "pages was not found."
+                )
 
         return loaded_transactions, next_page_data
 
-    def _parse_api_response(self,
-                            data: Dict[str, Any],
-                            next_page_data: Dict[str, Any]) -> _PageResult:
+    def _parse_api_response(self, data: dict[str, Any], next_page_data: dict[str, Any]) -> _PageResult:
         try:
             display_response = data["displayResponse"]
             transaction_list = display_response["transactionsList"]
-        except (KeyError, TypeError):
-            raise AmazonOrdersError("Could not parse Transaction history. Check if Amazon changed the API.",
-                                    meta=next_page_data)
+        except (KeyError, TypeError) as e:
+            raise AmazonOrdersError(
+                "Could not parse Transaction history. Check if Amazon changed the API.", meta=next_page_data
+            ) from e
 
         loaded_transactions = self._parse_transactions_data(transaction_list)
 
@@ -107,16 +107,17 @@ class TransactionsPage(transactions.TransactionsPage):
             "request": dict(next_page_data["request"], exclusiveStartKey=last_evaluated_key),
         }
 
-    def _parse_transactions_data(self,
-                                 transaction_list: List[Dict[str, Any]]) -> List[Transaction]:
+    def _parse_transactions_data(self, transaction_list: list[dict[str, Any]]) -> list[Transaction]:
         config = self.config
         loaded_transactions = []
         for data in transaction_list:
             date_str = data.get("formattedDate")
             completed_date = config.constants.parse_date(date_str)
             if completed_date is None:
-                err_msg = (f"Transaction date {date_str!r} could not be parsed, but it's required. Check if "
-                           f"Amazon changed the page")
+                err_msg = (
+                    f"Transaction date {date_str!r} could not be parsed, but it's required. Check if "
+                    f"Amazon changed the page"
+                )
                 if not config.warn_on_missing_required_field:
                     raise AmazonOrdersEntityError(f"{err_msg} or set warn_on_missing_required_field=True in config.")
 
@@ -125,8 +126,10 @@ class TransactionsPage(transactions.TransactionsPage):
 
             grand_total = config.constants.parse_currency(data.get("formattedAmount"))
             if grand_total is None:
-                logger.warning(f"Transaction amount {data.get('formattedAmount')!r} could not be parsed, so the "
-                               f"Transaction was skipped.")
+                logger.warning(
+                    f"Transaction amount {data.get('formattedAmount')!r} could not be parsed, so the "
+                    f"Transaction was skipped."
+                )
                 continue
 
             payment_data = data.get("paymentMethodDisplayStringData") or {}
@@ -136,16 +139,19 @@ class TransactionsPage(transactions.TransactionsPage):
             order_data = (data.get("orderData") or [{}])[0]
             order_number_match = _ORDER_NUMBER_RE.search(order_data.get("orderDisplayString") or "")
 
-            loaded_transactions.append(config.transaction_cls.from_fields(
-                config,
-                completed_date,
-                grand_total,
-                payment_method=f"{payment_method_name} ****{last_digits}"
-                if payment_method_name and last_digits else payment_method_name,
-                payment_method_last_4=last_digits,
-                order_number=order_number_match.group(1) if order_number_match else None,
-                order_details_link=order_data.get("orderDetailsUrl"),
-                seller=data.get("statementDescriptor"),
-            ))
+            loaded_transactions.append(
+                config.transaction_cls.from_fields(
+                    config,
+                    completed_date,
+                    grand_total,
+                    payment_method=f"{payment_method_name} ****{last_digits}"
+                    if payment_method_name and last_digits
+                    else payment_method_name,
+                    payment_method_last_4=last_digits,
+                    order_number=order_number_match.group(1) if order_number_match else None,
+                    order_details_link=order_data.get("orderDetailsUrl"),
+                    seller=data.get("statementDescriptor"),
+                )
+            )
 
         return loaded_transactions

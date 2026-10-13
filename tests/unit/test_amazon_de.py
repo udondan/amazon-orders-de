@@ -7,13 +7,13 @@ from datetime import date
 from unittest.mock import patch
 
 import responses
-
-import amazon_orders_de
 from amazonorders.conf import AmazonOrdersConfig
 from amazonorders.exception import AmazonOrdersEntityError, AmazonOrdersError
 from amazonorders.orders import AmazonOrders
 from amazonorders.session import AmazonSession
 from amazonorders.transactions import AmazonTransactions
+
+import amazon_orders_de
 
 RESOURCES_DIR = os.path.join(os.path.dirname(__file__), os.pardir, "resources")
 
@@ -30,24 +30,27 @@ class TestAmazonDe(unittest.TestCase):
         self.de_config = self._config()
 
     def _config(self, **data):
-        return AmazonOrdersConfig(data={
-            "language_package": "amazon_orders_de",
-            "domain": "amazon.de",
-            "output_dir": os.path.join(self.tmp_dir.name, "output"),
-            "cookie_jar_path": os.path.join(self.tmp_dir.name, "cookies.json"),
-            **data,
-        })
+        return AmazonOrdersConfig(
+            data={
+                "language_package": "amazon_orders_de",
+                "domain": "amazon.de",
+                "output_dir": os.path.join(self.tmp_dir.name, "output"),
+                "cookie_jar_path": os.path.join(self.tmp_dir.name, "cookies.json"),
+                **data,
+            }
+        )
 
     def _read(self, *path):
-        with open(os.path.join(RESOURCES_DIR, *path), "r", encoding="utf-8") as f:
+        with open(os.path.join(RESOURCES_DIR, *path), encoding="utf-8") as f:
             return f.read()
 
     def _history(self, name):
         return AmazonOrders.parse_order_history(self._read("orders", f"order-history-{name}.html"), self.de_config)
 
     def _details(self, order_number):
-        return AmazonOrders.parse_order_details(self._read("orders", f"order-details-{order_number}.html"),
-                                                self.de_config)
+        return AmazonOrders.parse_order_details(
+            self._read("orders", f"order-details-{order_number}.html"), self.de_config
+        )
 
     def _session(self):
         amazon_session = AmazonSession("some-username@gmail.com", "some-password", config=self.de_config)
@@ -63,8 +66,10 @@ class TestAmazonDe(unittest.TestCase):
         self.assertEqual("https://www.amazon.de", self.de_config.constants.BASE_URL)
         self.assertEqual("€", self.de_config.constants.CURRENCY_SYMBOL)
         self.assertEqual(["x-acbde"], self.de_config.constants.COOKIES_SET_WHEN_AUTHENTICATED)
-        self.assertEqual("https://www.amazon.de/payments-portal/data/iris/live/v1/data/manage/get-transactions",
-                         self.de_config.constants.TRANSACTION_HISTORY_API_URL)
+        self.assertEqual(
+            "https://www.amazon.de/payments-portal/data/iris/live/v1/data/manage/get-transactions",
+            self.de_config.constants.TRANSACTION_HISTORY_API_URL,
+        )
 
     @responses.activate
     def test_requests_ask_for_english(self):
@@ -104,8 +109,9 @@ class TestAmazonDe(unittest.TestCase):
         orders = self._history("2024-0")
 
         # THEN
-        self.assertEqual([date(2024, 12, 8), date(2024, 12, 7), date(2024, 12, 6)],
-                         [order.order_placed_date for order in orders])
+        self.assertEqual(
+            [date(2024, 12, 8), date(2024, 12, 7), date(2024, 12, 6)], [order.order_placed_date for order in orders]
+        )
         self.assertEqual([25.73, 0.0, 9.45], [order.grand_total for order in orders])
 
     def test_order_history_cancelled(self):
@@ -223,8 +229,9 @@ class TestAmazonDe(unittest.TestCase):
     def test_transactions(self):
         # WHEN
         with self.assertNoLogs(level="WARNING"):
-            transactions = AmazonTransactions.parse_transactions(self._read("transactions", "transactions.html"),
-                                                                 self.de_config)
+            transactions = AmazonTransactions.parse_transactions(
+                self._read("transactions", "transactions.html"), self.de_config
+            )
 
         # THEN
         self.assertEqual(20, len(transactions))
@@ -236,19 +243,29 @@ class TestAmazonDe(unittest.TestCase):
         self.assertEqual("Amazon Visa ****1234", transaction.payment_method)
         self.assertEqual("1234", transaction.payment_method_last_4)
         self.assertEqual("AMZN Mktp DE", transaction.seller)
-        self.assertEqual("https://www.amazon.de/gp/css/summary/edit.html?orderID=302-1023958-8934207",
-                         transaction.order_details_link)
+        self.assertEqual(
+            "https://www.amazon.de/gp/css/summary/edit.html?orderID=302-1023958-8934207",
+            transaction.order_details_link,
+        )
         self.assertEqual("Amazon Gift Card", transactions[8].payment_method)
         self.assertIsNone(transactions[8].payment_method_last_4)
         self.assertEqual("Example Bank Points", transactions[11].payment_method)
         self.assertEqual(date(2026, 8, 4), transactions[19].completed_date)
 
     def _mock_transactions(self, page_2_body=None):
-        responses.add(responses.POST, self.de_config.constants.TRANSACTION_HISTORY_URL,
-                      body=self._read("transactions", "transactions.html"), status=200)
-        page_2 = responses.add(responses.POST, self.de_config.constants.TRANSACTION_HISTORY_API_URL,
-                               body=page_2_body or self._read("transactions", "transactions-api-page-2.json"),
-                               status=200, content_type="application/json")
+        responses.add(
+            responses.POST,
+            self.de_config.constants.TRANSACTION_HISTORY_URL,
+            body=self._read("transactions", "transactions.html"),
+            status=200,
+        )
+        page_2 = responses.add(
+            responses.POST,
+            self.de_config.constants.TRANSACTION_HISTORY_API_URL,
+            body=page_2_body or self._read("transactions", "transactions-api-page-2.json"),
+            status=200,
+            content_type="application/json",
+        )
 
         return AmazonTransactions(self._session()), page_2
 
@@ -280,7 +297,8 @@ class TestAmazonDe(unittest.TestCase):
         # GIVEN
         mock_today.date.today.return_value = date(2026, 9, 23)
         last_page = self._read("transactions", "transactions-api-page-2.json").replace(
-            '"lastEvaluatedKey":"REDACTED"', '"other":"REDACTED"')
+            '"lastEvaluatedKey":"REDACTED"', '"other":"REDACTED"'
+        )
         amazon_transactions, page_2 = self._mock_transactions(last_page)
 
         # WHEN
@@ -323,8 +341,9 @@ class TestAmazonDe(unittest.TestCase):
     def test_get_transactions_api_changed(self, mock_today):
         # GIVEN
         mock_today.date.today.return_value = date(2026, 9, 23)
-        amazon_transactions, _ = self._mock_transactions(json.dumps({"type": "GetTransactions",
-                                                                     "responseCode": "success"}))
+        amazon_transactions, _ = self._mock_transactions(
+            json.dumps({"type": "GetTransactions", "responseCode": "success"})
+        )
 
         # WHEN
         with self.assertRaises(AmazonOrdersError) as cm:
@@ -349,8 +368,9 @@ class TestAmazonDe(unittest.TestCase):
 
     def test_transactions_date_that_cannot_be_parsed_raises(self):
         # GIVEN
-        html = self._read("transactions", "transactions.html").replace('"formattedDate":"07 Sept 2026"',
-                                                                       '"formattedDate":"Today"', 1)
+        html = self._read("transactions", "transactions.html").replace(
+            '"formattedDate":"07 Sept 2026"', '"formattedDate":"Today"', 1
+        )
 
         # WHEN
         with self.assertRaises(AmazonOrdersEntityError) as cm:
@@ -361,8 +381,9 @@ class TestAmazonDe(unittest.TestCase):
 
     def test_transactions_skips_date_that_cannot_be_parsed_when_configured(self):
         # GIVEN
-        html = self._read("transactions", "transactions.html").replace('"formattedDate":"07 Sept 2026"',
-                                                                       '"formattedDate":"Today"', 1)
+        html = self._read("transactions", "transactions.html").replace(
+            '"formattedDate":"07 Sept 2026"', '"formattedDate":"Today"', 1
+        )
         config = self._config(warn_on_missing_required_field=True)
 
         # WHEN
