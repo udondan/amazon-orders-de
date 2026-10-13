@@ -4,7 +4,8 @@ name: Integration Test
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 7 * * *"
+    # Weekly, Monday morning: a login every day makes Amazon more likely to challenge it.
+    - cron: "0 7 * * 1"
 
 permissions:
   contents: read
@@ -18,7 +19,8 @@ jobs:
     timeout-minutes: 30
     env:
       PYTHONUNBUFFERED: 1
-      DEBUG: "True"
+      # The logs of a public repo are public, and debug output logs every URL, with the account's Order numbers.
+      DEBUG: "False"
       AMAZON_USERNAME: ${{ secrets.AMAZON_USERNAME }}
       AMAZON_PASSWORD: ${{ secrets.AMAZON_PASSWORD }}
       AMAZON_OTP_SECRET_KEY: ${{ secrets.AMAZON_OTP_SECRET_KEY }}
@@ -39,6 +41,5 @@ jobs:
       - name: Install dependencies
         run: mise run install
 
-      # Debug output holds the raw pages of a real account, so it isn't uploaded as an artifact.
       - name: Integration test
         run: mise run integration-test

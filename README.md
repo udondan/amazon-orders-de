@@ -61,4 +61,4 @@ The unit tests parse real amazon.de pages in `tests/resources`. Before a page is
 with the values to replace must never be committed.
 
 The integration tests in `tests/integration` log in to amazon.de with `AMAZON_USERNAME`, `AMAZON_PASSWORD`, and
-`AMAZON_OTP_SECRET_KEY`, and run nightly in CI.
+`AMAZON_OTP_SECRET_KEY`, and run weekly in CI.
