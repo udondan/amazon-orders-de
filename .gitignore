@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.lycheecache
+.coverage
+htmlcov/
+
+# Debug output of amazon-orders (real, unanonymized pages)
+output/
+# Raw pages captured from a real account, before they are anonymized
+tests/resources-raw/
+tests/.integration-output/
+
+.claude/worktrees/
