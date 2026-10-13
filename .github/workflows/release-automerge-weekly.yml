@@ -16,11 +16,12 @@ jobs:
     steps:
       # OVERRIDE_TOKEN is required: a merge made with GITHUB_TOKEN would not
       # trigger the release-please workflow that creates the release.
+      # release-please appends the component to the branch name, and `--head` only matches whole names.
       - name: Merge release PR
         run: |
-          pr=$(gh pr list --repo "${GITHUB_REPOSITORY}" \
-            --head release-please--branches--main --state open \
-            --json number --jq '.[0].number // empty')
+          pr=$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open \
+            --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("release-please--branches--main"))][0].number // empty')
           if [ -z "${pr}" ]; then
             echo "No open release PR."
             exit 0
