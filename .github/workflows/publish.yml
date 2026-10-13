@@ -23,15 +23,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # The package needs Constants.REQUEST_COOKIES, so it's only published once amazon-orders has released it and
-      # pyproject.toml requires that release instead of the develop branch.
-      - name: Refuse an unreleased amazon-orders
-        run: |
-          if grep -n 'git = ' pyproject.toml; then
-            echo "::error file=pyproject.toml::amazon-orders comes from git. Require its release with REQUEST_COOKIES and remove [tool.uv.sources]."
-            exit 1
-          fi
-
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
 
       - name: Build

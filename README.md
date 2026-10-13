@@ -18,13 +18,6 @@ different there:
 pip install amazon-orders-de
 ```
 
-amazon.de picks a page's language from a cookie, which needs `Constants.REQUEST_COOKIES` from amazon-orders' next
-release. Until then, install amazon-orders from its `develop` branch:
-
-```sh
-pip install amazon-orders-de "amazon-orders @ git+https://github.com/alexdlaird/amazon-orders@develop"
-```
-
 ## Usage
 
 Set `language_package` and `domain` in the `amazon-orders` config (`~/.config/amazonorders/config.yml`):
@@ -59,9 +52,6 @@ mise run install    # uv sync
 mise run lint       # ruff and mypy; `mise run lint-fix` fixes what it can
 mise run test
 ```
-
-Until amazon-orders releases `Constants.REQUEST_COOKIES`, uv installs it from its `develop` branch (see
-`[tool.uv.sources]` in `pyproject.toml`).
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/), from which release-please creates the
 releases and the changelog.

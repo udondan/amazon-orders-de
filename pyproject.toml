@@ -8,7 +8,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Daniel Schroeder" }]
 requires-python = ">=3.10"
 dependencies = [
-    "amazon-orders>=4.8.0,<5",
+    "amazon-orders>=4.8.1,<5",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -34,12 +34,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["amazon_orders_de"]
-
-# Constants.REQUEST_COOKIES isn't released yet, so develop and test against amazon-orders' develop branch until it is.
-# Only uv reads this, the published package requires amazon-orders by version. publish.yml refuses to publish while
-# it's here.
-[tool.uv.sources]
-amazon-orders = { git = "https://github.com/alexdlaird/amazon-orders", branch = "develop" }
 
 [tool.ruff]
 line-length = 119
