@@ -1,4 +1,23 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>udondan/renovate-config"]
+  "extends": ["github>udondan/renovate-config"],
+  "customManagers": [
+    {
+      "description": "The newest Python of the test matrix is the one of mise.toml. Same lookup as Renovate's mise manager.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/mr-test\\.yml$/"],
+      "matchStrings": ["# renovate: python\\s+- \"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "python",
+      "packageNameTemplate": "python/cpython",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v(?<version>\\S+)"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Update Python in mise.toml and the test matrix in one PR.",
+      "matchDepNames": ["python"],
+      "groupName": "python"
+    }
+  ]
 }
