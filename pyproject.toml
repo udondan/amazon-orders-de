@@ -1,6 +1,6 @@
 [project]
 name = "amazon-orders-de"
-version = "1.0.0"
+version = "1.0.1"
 description = "An amazon-orders language package for amazon.de, which parses its pages in English"
 readme = "README.md"
 license = "MIT"
