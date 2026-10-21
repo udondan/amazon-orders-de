@@ -1,10 +1,11 @@
 # amazon-orders-de
 
 > [!IMPORTANT]
-> This package is no longer needed. `amazon-orders` supports amazon.de itself in the first release after 4.9.4. Once
-> you've upgraded, remove `language_package` from your config, keep `domain: amazon.de`, and uninstall this package:
+> This package is no longer needed. `amazon-orders` supports amazon.de itself since 4.9.5. Upgrade it, remove
+> `language_package` from your config, keep `domain: amazon.de`, and uninstall this package:
 >
 > ```sh
+> pip install --upgrade "amazon-orders>=4.9.5"
 > pip uninstall amazon-orders-de
 > ```
 
